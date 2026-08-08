@@ -373,33 +373,7 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=30, weight="bold")
         ).grid(row=0, column=0, columnspan=2, padx=28, pady=(24, 12), sticky="w")
 
-        bar = ctk.CTkFrame(root, corner_radius=14)
-        bar.grid(row=1, column=0, columnspan=2, padx=28, pady=(0, 14), sticky="ew")
-        bar.grid_columnconfigure(0, weight=1)
-
-        self.search = ctk.CTkEntry(bar, placeholder_text="Search filename, place, scene, emotion...")
-        self.search.grid(row=0, column=0, padx=(16, 8), pady=14, sticky="ew")
-
-        self.filter_menu = ctk.CTkOptionMenu(
-            bar, values=["All", "Favorites", "AI Analyzed", "Photo", "Video"],
-            command=lambda _: self.refresh()
-        )
-        self.filter_menu.grid(row=0, column=1, padx=8, pady=14)
-
-        ctk.CTkButton(bar, text="Search", width=90, command=self.refresh).grid(
-            row=0, column=2, padx=8, pady=14
-        )
-        ctk.CTkButton(
-            bar, text="Export DNA", width=100,
-            command=lambda: self.export_current(vacation)
-        ).grid(row=0, column=3, padx=8, pady=14)
-        ctk.CTkButton(
-            bar, text="✨ Analyze Entire Vacation", width=185,
-            command=lambda: self.show_batch_analysis(vacation)
-        ).grid(row=0, column=4, padx=8, pady=14)
-        ctk.CTkButton(bar, text="Back", width=70, command=self.show_home).grid(
-            row=0, column=5, padx=(8, 16), pady=14
-        )
+        self.build_explorer_toolbar(root, vacation)
 
         self.gallery = ctk.CTkScrollableFrame(root, corner_radius=16)
         self.gallery.grid(row=2, column=0, padx=(28, 10), pady=(0, 24), sticky="nsew")
@@ -408,6 +382,51 @@ class App(ctk.CTk):
         self.detail.grid(row=2, column=1, padx=(10, 28), pady=(0, 24), sticky="nsew")
 
         self.refresh()
+    def build_explorer_toolbar(self, root, vacation):
+        bar = ctk.CTkFrame(root, corner_radius=14)
+        bar.grid(row=1, column=0, columnspan=2, padx=28, pady=(0, 14), sticky="ew")
+        bar.grid_columnconfigure(0, weight=1)
+
+        self.search = ctk.CTkEntry(
+            bar,
+            placeholder_text="Search filename, place, scene, emotion..."
+        )
+        self.search.grid(row=0, column=0, padx=(16, 8), pady=14, sticky="ew")
+
+        self.filter_menu = ctk.CTkOptionMenu(
+            bar,
+            values=["All", "Favorites", "AI Analyzed", "Photo", "Video"],
+            command=lambda _: self.refresh()
+        )
+        self.filter_menu.grid(row=0, column=1, padx=8, pady=14)
+
+        ctk.CTkButton(
+            bar,
+            text="Search",
+            width=90,
+            command=self.refresh
+        ).grid(row=0, column=2, padx=8, pady=14)
+
+        ctk.CTkButton(
+            bar,
+            text="Export DNA",
+            width=100,
+            command=lambda: self.export_current(vacation)
+        ).grid(row=0, column=3, padx=8, pady=14)
+
+        ctk.CTkButton(
+            bar,
+            text="✨ Analyze Entire Vacation",
+            width=185,
+            command=lambda: self.show_batch_analysis(vacation)
+        ).grid(row=0, column=4, padx=8, pady=14)
+
+        ctk.CTkButton(
+            bar,
+            text="Back",
+            width=70,
+            command=self.show_home
+        ).grid(row=0, column=5, padx=(8, 16), pady=14)
 
     def refresh(self):
         if self.current_vacation_id is None:
