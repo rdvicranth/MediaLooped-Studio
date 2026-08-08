@@ -377,8 +377,7 @@ class App(ctk.CTk):
 
         self.build_gallery_panel(root)
 
-        self.detail = ctk.CTkScrollableFrame(root, corner_radius=16)
-        self.detail.grid(row=2, column=1, padx=(10, 28), pady=(0, 24), sticky="nsew")
+        self.build_detail_panel(root)
 
         self.refresh()
     def build_explorer_toolbar(self, root, vacation):
@@ -434,6 +433,15 @@ class App(ctk.CTk):
             padx=(28, 10),
             pady=(0, 24),
             sticky="nsew"
+        )
+    def build_detail_panel(self, root):
+        self.detail = ctk.CTkScrollableFrame(root, corner_radius=16)
+        self.detail.grid(
+        row=2,
+        column=1,
+        padx=(10, 28),
+        pady=(0, 24),
+        sticky="nsew"
         )
     def refresh(self):
         if self.current_vacation_id is None:
