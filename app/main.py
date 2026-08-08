@@ -536,6 +536,28 @@ class App(ctk.CTk):
 
         if self.current_media:
             self.show_detail(self.current_media[0])
+    def build_detail_preview(self, image_path):
+        if image_path and image_path.exists():
+            try:
+                pil = Image.open(image_path)
+                pil.thumbnail((380, 280))
+                img = ctk.CTkImage(
+                    light_image=pil,
+                    dark_image=pil,
+                    size=pil.size
+                )
+                self.images.append(img)
+
+                ctk.CTkLabel(
+                    self.detail,
+                    text="",
+                    image=img
+                ).pack(
+                    padx=18,
+                    pady=(18, 12)
+                )
+            except Exception:
+                pass
 
     def show_detail(self, media: dict):
         self.selected_media = media
@@ -546,15 +568,7 @@ class App(ctk.CTk):
         source = full_path(vacation, media)
         large = thumbnail(source, f'{media["vacation_id"]}_{media["id"]}_large', 700)
 
-        if large and large.exists():
-            try:
-                pil = Image.open(large)
-                pil.thumbnail((380, 280))
-                img = ctk.CTkImage(light_image=pil, dark_image=pil, size=pil.size)
-                self.images.append(img)
-                ctk.CTkLabel(self.detail, text="", image=img).pack(padx=18, pady=(18, 12))
-            except Exception:
-                pass
+        self.build_detail_preview(large)
 
         ctk.CTkLabel(
             self.detail, text="AI Memory Card",
