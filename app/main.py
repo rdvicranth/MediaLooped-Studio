@@ -443,6 +443,71 @@ class App(ctk.CTk):
         pady=(0, 24),
         sticky="nsew"
         )
+    def build_memory_card(self, vacation, media, index):
+        row, col = index // 3 + 1, index % 3
+        source = full_path(vacation, media)
+        thumb = thumbnail(source, f'{media["vacation_id"]}_{media["id"]}', 260)
+
+        card = ctk.CTkFrame(self.gallery, corner_radius=12)
+        card.grid(row=row, column=col, padx=8, pady=8, sticky="nsew")
+
+        button = None
+
+        if thumb and thumb.exists():
+            try:
+                pil = Image.open(thumb)
+                pil.thumbnail((190, 135))
+                img = ctk.CTkImage(
+                    light_image=pil,
+                    dark_image=pil,
+                    size=pil.size
+                )
+                self.images.append(img)
+
+                button = ctk.CTkButton(
+                    card,
+                    text="",
+                    image=img,
+                    fg_color="transparent",
+                    hover_color=("gray85", "gray25"),
+                    command=lambda m=media: self.show_detail(m)
+                )
+            except Exception:
+                pass
+
+        if button is None:
+            button = ctk.CTkButton(
+                card,
+                text=media["media_type"],
+                command=lambda m=media: self.show_detail(m)
+            )
+
+        button.pack(
+            padx=8,
+            pady=(8, 4),
+            fill="both",
+            expand=True
+        )
+
+        title = media["scene"] or media["filename"]
+
+        if len(title) > 24:
+            title = title[:21] + "..."
+
+        prefix = (
+            "✨ "
+            if media["ai_analyzed"]
+            else ("♥ " if media["favorite"] else "")
+        )
+
+        ctk.CTkLabel(
+            card,
+            text=prefix + title,
+            font=ctk.CTkFont(size=11)
+        ).pack(
+            padx=8,
+            pady=(2, 8)
+        )   
     def refresh(self):
         if self.current_vacation_id is None:
             return
@@ -466,39 +531,8 @@ class App(ctk.CTk):
             self.gallery.grid_columnconfigure(col, weight=1)
 
         for index, media in enumerate(self.current_media):
-            row, col = index // 3 + 1, index % 3
-            source = full_path(vacation, media)
-            thumb = thumbnail(source, f'{media["vacation_id"]}_{media["id"]}', 260)
-
-            card = ctk.CTkFrame(self.gallery, corner_radius=12)
-            card.grid(row=row, column=col, padx=8, pady=8, sticky="nsew")
-
-            button = None
-            if thumb and thumb.exists():
-                try:
-                    pil = Image.open(thumb)
-                    pil.thumbnail((190, 135))
-                    img = ctk.CTkImage(light_image=pil, dark_image=pil, size=pil.size)
-                    self.images.append(img)
-                    button = ctk.CTkButton(
-                        card, text="", image=img, fg_color="transparent",
-                        hover_color=("gray85", "gray25"),
-                        command=lambda m=media: self.show_detail(m)
-                    )
-                except Exception:
-                    pass
-            if button is None:
-                button = ctk.CTkButton(card, text=media["media_type"],
-                                       command=lambda m=media: self.show_detail(m))
-            button.pack(padx=8, pady=(8, 4), fill="both", expand=True)
-
-            title = media["scene"] or media["filename"]
-            if len(title) > 24:
-                title = title[:21] + "..."
-            prefix = "✨ " if media["ai_analyzed"] else ("♥ " if media["favorite"] else "")
-            ctk.CTkLabel(card, text=prefix + title, font=ctk.CTkFont(size=11)).pack(
-                padx=8, pady=(2, 8)
-            )
+            self.build_memory_card(vacation, media, index)
+            
 
         if self.current_media:
             self.show_detail(self.current_media[0])
