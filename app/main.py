@@ -558,6 +558,42 @@ class App(ctk.CTk):
                 )
             except Exception:
                 pass
+    
+    def build_ai_action_block(self, media, image_path):
+            ctk.CTkLabel(
+                self.detail,
+                text="AI Memory Card",
+                font=ctk.CTkFont(size=22, weight="bold")
+            ).pack(
+                padx=18,
+                pady=(8, 12),
+                anchor="w"
+            )
+
+            self.current_ai_button = ctk.CTkButton(
+                self.detail,
+                text="✨ Analyze with AI",
+                command=lambda: self.start_ai_analysis(media, image_path),
+                height=44
+            )
+            self.current_ai_button.pack(
+                padx=18,
+                pady=(0, 10),
+                fill="x"
+            )
+
+            ctk.CTkLabel(
+                self.detail,
+                text="A selected image—or one representative frame for a video—will be sent to OpenAI.",
+                wraplength=380,
+                justify="left",
+                text_color=("gray40", "gray70")
+            ).pack(
+                padx=18,
+                pady=(0, 10),
+                anchor="w"
+            )
+
 
     def show_detail(self, media: dict):
         self.selected_media = media
@@ -570,24 +606,7 @@ class App(ctk.CTk):
 
         self.build_detail_preview(large)
 
-        ctk.CTkLabel(
-            self.detail, text="AI Memory Card",
-            font=ctk.CTkFont(size=22, weight="bold")
-        ).pack(padx=18, pady=(8, 12), anchor="w")
-
-        self.current_ai_button = ctk.CTkButton(
-            self.detail,
-            text="✨ Analyze with AI",
-            command=lambda: self.start_ai_analysis(media, large),
-            height=44,
-        )
-        self.current_ai_button.pack(padx=18, pady=(0, 10), fill="x")
-
-        ctk.CTkLabel(
-            self.detail,
-            text="A selected image—or one representative frame for a video—will be sent to OpenAI.",
-            wraplength=380, justify="left", text_color=("gray40", "gray70")
-        ).pack(padx=18, pady=(0, 10), anchor="w")
+        self.build_ai_action_block(media, large)
 
         self.favorite_var = ctk.IntVar(value=media["favorite"])
         ctk.CTkCheckBox(
