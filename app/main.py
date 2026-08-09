@@ -593,7 +593,49 @@ class App(ctk.CTk):
                 pady=(0, 10),
                 anchor="w"
             )
+    
+    def build_memory_fields(self, media):
+        self.favorite_var = ctk.IntVar(value=media["favorite"])
 
+        ctk.CTkCheckBox(
+                self.detail,
+                text="Favorite Memory",
+                variable=self.favorite_var
+            ).pack(
+                padx=18,
+                pady=6,
+                anchor="w"
+            )
+
+        self.entries = {}
+
+        fields = [
+            ("scene", "Scene", media["scene"]),
+            ("place", "Place", media["place"]),
+            ("emotion", "Emotion", media["emotion"]),
+            ("activity", "Activity", media["activity"]),
+            ("story_role", "Story role", media["story_role"]),
+        ]
+
+        for key, label, value in fields:
+            ctk.CTkLabel(
+                self.detail,
+                text=label
+            ).pack(
+                padx=18,
+                pady=(8, 2),
+                anchor="w"
+            )
+
+            entry = ctk.CTkEntry(self.detail)
+            entry.insert(0, value or "")
+            entry.pack(
+                padx=18,
+                pady=(0, 4),
+                fill="x"
+            )
+
+        self.entries[key] = entry
 
     def show_detail(self, media: dict):
         self.selected_media = media
@@ -608,25 +650,7 @@ class App(ctk.CTk):
 
         self.build_ai_action_block(media, large)
 
-        self.favorite_var = ctk.IntVar(value=media["favorite"])
-        ctk.CTkCheckBox(
-            self.detail, text="Favorite Memory", variable=self.favorite_var
-        ).pack(padx=18, pady=6, anchor="w")
-
-        self.entries = {}
-        fields = [
-            ("scene", "Scene", media["scene"]),
-            ("place", "Place", media["place"]),
-            ("emotion", "Emotion", media["emotion"]),
-            ("activity", "Activity", media["activity"]),
-            ("story_role", "Story role", media["story_role"]),
-        ]
-        for key, label, value in fields:
-            ctk.CTkLabel(self.detail, text=label).pack(padx=18, pady=(8, 2), anchor="w")
-            entry = ctk.CTkEntry(self.detail)
-            entry.insert(0, value or "")
-            entry.pack(padx=18, pady=(0, 4), fill="x")
-            self.entries[key] = entry
+        self.build_memory_fields(media)
 
         ctk.CTkLabel(self.detail, text="Importance (1–5)").pack(
             padx=18, pady=(10, 2), anchor="w"
