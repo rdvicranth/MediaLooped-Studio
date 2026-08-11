@@ -249,6 +249,51 @@ def build_story_blueprint(vacation_id: int) -> dict:
         blueprint[chapter_name] = choose_diverse(candidates, limit)
 
     return blueprint
+def build_trip_chapters(vacation_id: int) -> list[dict]:
+    conn = db()
+
+    rows = conn.execute(
+        """
+        SELECT *
+        FROM media
+        WHERE vacation_id=?
+          AND ai_analyzed=1
+          AND content_created IS NOT NULL
+          AND content_created != ''
+        ORDER BY content_created, filename
+        """,
+        (vacation_id,)
+    ).fetchall()
+
+    conn.close()
+
+    memories = [dict(r) for r in rows]
+
+    chapters = []
+    current = None
+
+    for memory in memories:
+        created = memory.get("content_created") or ""
+        date_key = created[:10]
+        place = (memory.get("place") or "").strip()
+
+        if not date_key:
+            continue
+
+        if current is None or current["date"] != date_key:
+            current = {
+                "date": date_key,
+                "places": [],
+                "memories": [],
+            }
+            chapters.append(current)
+
+        if place and place not in current["places"]:
+            current["places"].append(place)
+
+        current["memories"].append(memory)
+
+    return chapters
 def save_memory_dna(media_id: int, values: dict, ai_analyzed: int | None = None) -> None:
     conn = db()
     if ai_analyzed is None:
