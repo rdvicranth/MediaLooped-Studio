@@ -160,7 +160,56 @@ def build_vacation_dna(vacation_id: int) -> dict:
         "activities": count_values("activity"),
         "story_roles": count_values("story_role"),
     }
+def build_story_blueprint(vacation_id: int) -> dict:
+    conn = db()
 
+    rows = conn.execute(
+        """
+        SELECT *
+        FROM media
+        WHERE vacation_id=?
+          AND ai_analyzed=1
+        ORDER BY
+            favorite DESC,
+            importance DESC,
+            quality_score DESC,
+            filename
+        """,
+        (vacation_id,)
+    ).fetchall()
+
+    conn.close()
+
+    memories = [dict(r) for r in rows]
+
+    chapters = [
+        ("opening", {"Opening", "Establishing"}, 4),
+        ("journey", {"Journey", "Transition"}, 8),
+        ("family", {"Family Moment"}, 12),
+        ("adventure", {"Adventure"}, 10),
+        ("highlights", {"Highlight"}, 10),
+    ]
+
+    used_ids = set()
+    blueprint = {}
+
+    for chapter_name, roles, limit in chapters:
+        selected = []
+
+        for memory in memories:
+            if memory["id"] in used_ids:
+                continue
+
+            if memory.get("story_role") in roles:
+                selected.append(memory)
+                used_ids.add(memory["id"])
+
+            if len(selected) >= limit:
+                break
+
+        blueprint[chapter_name] = selected
+
+    return blueprint
 def save_memory_dna(media_id: int, values: dict, ai_analyzed: int | None = None) -> None:
     conn = db()
     if ai_analyzed is None:
