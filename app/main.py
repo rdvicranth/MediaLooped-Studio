@@ -108,7 +108,58 @@ def list_media(vacation_id: int, media_filter: str, search: str) -> list[dict]:
     rows = conn.execute(query, params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+def build_vacation_dna(vacation_id: int) -> dict:
+    conn = db()
 
+    rows = conn.execute(
+        """
+        SELECT *
+        FROM media
+        WHERE vacation_id=?
+        ORDER BY filename
+        """,
+        (vacation_id,)
+    ).fetchall()
+
+    conn.close()
+
+    media = [dict(r) for r in rows]
+
+    total = len(media)
+    photos = sum(1 for item in media if item["media_type"] == "Photo")
+    videos = sum(1 for item in media if item["media_type"] == "Video")
+    analyzed = sum(1 for item in media if item["ai_analyzed"])
+    favorites = sum(1 for item in media if item["favorite"])
+
+    def count_values(field_name: str) -> list[tuple[str, int]]:
+        counts = {}
+
+        for item in media:
+            value = item.get(field_name)
+
+            if value:
+                value = str(value).strip()
+
+                if value:
+                    counts[value] = counts.get(value, 0) + 1
+
+        return sorted(
+            counts.items(),
+            key=lambda pair: (-pair[1], pair[0].lower())
+        )
+
+    return {
+        "vacation_id": vacation_id,
+        "total_memories": total,
+        "photos": photos,
+        "videos": videos,
+        "ai_analyzed": analyzed,
+        "favorites": favorites,
+        "places": count_values("place"),
+        "emotions": count_values("emotion"),
+        "activities": count_values("activity"),
+        "story_roles": count_values("story_role"),
+    }
 
 def save_memory_dna(media_id: int, values: dict, ai_analyzed: int | None = None) -> None:
     conn = db()
