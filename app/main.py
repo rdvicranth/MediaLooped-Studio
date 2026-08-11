@@ -57,6 +57,9 @@ def ensure_columns() -> None:
         "importance": "INTEGER NOT NULL DEFAULT 3",
         "memory_notes": "TEXT NOT NULL DEFAULT ''",
         "ai_analyzed": "INTEGER NOT NULL DEFAULT 0",
+        "story_date": "TEXT NOT NULL DEFAULT ''",
+        "story_date_source": "TEXT NOT NULL DEFAULT ''",
+        "story_date_confidence": "INTEGER NOT NULL DEFAULT 0",
     }
     for name, ddl in columns.items():
         if name not in existing:
@@ -260,7 +263,6 @@ def build_trip_chapters(vacation_id: int) -> list[dict]:
           AND ai_analyzed=1
           AND content_created IS NOT NULL
           AND content_created != ''
-        ORDER BY content_created, filename
         """,
         (vacation_id,)
     ).fetchall()
@@ -269,12 +271,25 @@ def build_trip_chapters(vacation_id: int) -> list[dict]:
 
     memories = [dict(r) for r in rows]
 
+    for memory in memories:
+        memory["_effective_story_date"] = (
+            memory.get("story_date")
+            or (memory.get("content_created") or "")[:10]
+        )
+
+    memories.sort(
+        key=lambda memory: (
+            memory.get("_effective_story_date") or "",
+            memory.get("content_created") or "",
+            memory.get("filename") or ""
+        )
+    )
+
     chapters = []
     current = None
 
     for memory in memories:
-        created = memory.get("content_created") or ""
-        date_key = created[:10]
+        date_key = memory.get("_effective_story_date") or ""
         place = (memory.get("place") or "").strip()
 
         if not date_key:
