@@ -193,21 +193,60 @@ def build_story_blueprint(vacation_id: int) -> dict:
     used_ids = set()
     blueprint = {}
 
-    for chapter_name, roles, limit in chapters:
-        selected = []
+    def normalized(value):
+        return (value or "").strip().lower()
 
-        for memory in memories:
+    def choose_diverse(candidates, limit):
+        selected = []
+        place_counts = {}
+        scene_keys = set()
+
+        for memory in candidates:
             if memory["id"] in used_ids:
                 continue
 
-            if memory.get("story_role") in roles:
-                selected.append(memory)
-                used_ids.add(memory["id"])
+            place = normalized(memory.get("place"))
+            scene = normalized(memory.get("scene"))
+
+            # Avoid selecting too many memories from one location.
+            if place and place_counts.get(place, 0) >= 2:
+                continue
+
+            # Avoid obvious duplicate/similar scene descriptions.
+            scene_key = scene[:45]
+            if scene_key and scene_key in scene_keys:
+                continue
+
+            selected.append(memory)
+            used_ids.add(memory["id"])
+
+            if place:
+                place_counts[place] = place_counts.get(place, 0) + 1
+
+            if scene_key:
+                scene_keys.add(scene_key)
 
             if len(selected) >= limit:
                 break
 
-        blueprint[chapter_name] = selected
+        selected.sort(
+            key=lambda memory: (
+                memory.get("content_created") or "",
+                memory.get("filename") or ""
+            )
+        )
+
+        return selected
+        
+
+    for chapter_name, roles, limit in chapters:
+        candidates = [
+            memory
+            for memory in memories
+            if memory.get("story_role") in roles
+        ]
+
+        blueprint[chapter_name] = choose_diverse(candidates, limit)
 
     return blueprint
 def save_memory_dna(media_id: int, values: dict, ai_analyzed: int | None = None) -> None:
