@@ -309,6 +309,336 @@ def build_trip_chapters(vacation_id: int) -> list[dict]:
         current["memories"].append(memory)
 
     return chapters
+def build_film_storyboard(vacation_id: int) -> list[dict]:
+    conn = db()
+
+    rows = conn.execute(
+        """
+        SELECT *
+        FROM media
+        WHERE vacation_id=?
+          AND ai_analyzed=1
+          AND duplicate_of=''
+        """,
+        (vacation_id,)
+    ).fetchall()
+
+    conn.close()
+
+    memories = [dict(r) for r in rows]
+
+    def effective_date(memory):
+        return (
+            memory.get("story_date")
+            or (memory.get("content_created") or "")[:10]
+        )
+
+    def text(memory, key):
+        return (memory.get(key) or "").strip()
+
+    # Ignore unresolved outlier dates for the first film cut.
+    memories = [
+        memory
+        for memory in memories
+        if "2026-07-09" <= effective_date(memory) <= "2026-07-19"
+    ]
+
+    events = [
+        {
+            "name": "Cold Open",
+            "dates": {"2026-07-15", "2026-07-16", "2026-07-18"},
+            "keywords": [
+                "moraine",
+                "lake louise",
+                "peyto",
+                "athabasca",
+                "gondola",
+                "canadian rockies",
+            ],
+            "target_seconds": 12,
+            "max_shots": 3,
+        },
+        {
+            "name": "Departure",
+            "dates": {"2026-07-09"},
+            "keywords": ["home driveway"],
+            "target_seconds": 7,
+            "max_shots": 2,
+        },
+        {
+            "name": "The Road West",
+            "dates": {"2026-07-10"},
+            "keywords": [
+                "wall drug",
+                "road-trip",
+                "roadside",
+                "dinosaur",
+            ],
+            "target_seconds": 12,
+            "max_shots": 4,
+        },
+        {
+            "name": "Badlands",
+            "dates": {"2026-07-11"},
+            "keywords": ["badlands"],
+            "target_seconds": 16,
+            "max_shots": 4,
+        },
+        {
+            "name": "Black Hills & Wildlife",
+            "dates": {"2026-07-11", "2026-07-12"},
+            "keywords": [
+                "custer",
+                "mount rushmore",
+                "wildlife",
+                "bison",
+                "bear",
+            ],
+            "target_seconds": 18,
+            "max_shots": 5,
+        },
+        {
+            "name": "Crossing North",
+            "dates": {"2026-07-13"},
+            "keywords": ["border", "road-trip"],
+            "target_seconds": 8,
+            "max_shots": 2,
+        },
+        {
+            "name": "Arrival in Banff",
+            "dates": {"2026-07-14"},
+            "keywords": [
+                "banff",
+                "canmore",
+                "bow river",
+                "bow falls",
+                "banff avenue",
+            ],
+            "target_seconds": 22,
+            "max_shots": 6,
+        },
+        {
+            "name": "Lake Louise",
+            "dates": {"2026-07-15"},
+            "keywords": ["lake louise"],
+            "target_seconds": 18,
+            "max_shots": 5,
+        },
+        {
+            "name": "Moraine Lake",
+            "dates": {"2026-07-15"},
+            "keywords": ["moraine"],
+            "target_seconds": 20,
+            "max_shots": 5,
+        },
+        {
+            "name": "Icefields Parkway",
+            "dates": {"2026-07-16"},
+            "keywords": [
+                "peyto",
+                "bow lake",
+                "icefields parkway",
+                "mountain overlook",
+            ],
+            "target_seconds": 24,
+            "max_shots": 6,
+        },
+        {
+            "name": "Athabasca Glacier",
+            "dates": {"2026-07-16"},
+            "keywords": ["athabasca"],
+            "target_seconds": 26,
+            "max_shots": 6,
+        },
+        {
+            "name": "Johnston Canyon",
+            "dates": {"2026-07-17"},
+            "keywords": ["johnston canyon"],
+            "target_seconds": 20,
+            "max_shots": 5,
+        },
+        {
+            "name": "Sulphur Mountain",
+            "dates": {"2026-07-18"},
+            "keywords": [
+                "gondola",
+                "sulphur",
+                "mountain overlook",
+                "canadian rockies",
+            ],
+            "target_seconds": 22,
+            "max_shots": 5,
+        },
+        {
+            "name": "Farewell",
+            "dates": {"2026-07-18", "2026-07-19"},
+            "keywords": [
+                "lake minnewanka",
+                "banff",
+                "family",
+                "lodging",
+            ],
+            "target_seconds": 18,
+            "max_shots": 5,
+        },
+    ]
+
+    def event_match_score(memory, event):
+        score = 0
+
+        if effective_date(memory) not in event["dates"]:
+            return -9999
+
+        haystack = " ".join([
+            text(memory, "place"),
+            text(memory, "scene"),
+            text(memory, "activity"),
+        ]).lower()
+
+        keyword_hits = sum(
+            1
+            for keyword in event["keywords"]
+            if keyword in haystack
+        )
+
+        if keyword_hits == 0:
+            return -9999
+
+        score += keyword_hits * 80
+        score += int(memory.get("importance") or 0) * 25
+        score += int(memory.get("quality_score") or 0)
+
+        role = text(memory, "story_role").lower()
+
+        if "highlight" in role:
+            score += 35
+        elif "family" in role:
+            score += 25
+        elif "adventure" in role:
+            score += 20
+        elif "establish" in role:
+            score += 15
+        elif "journey" in role or "transition" in role:
+            score += 12
+
+        if memory.get("favorite"):
+            score += 30
+
+        if memory.get("media_type") == "Video":
+            score += 20
+
+        # Hard rejection / penalty rules.
+        scene = text(memory, "scene").lower()
+        place = text(memory, "place").lower()
+
+        if int(memory.get("importance") or 0) <= 1:
+            score -= 200
+
+        if "abstract" in scene or "motion-blurred" in scene:
+            score -= 250
+
+        if place in {"unknown", ""}:
+            score -= 60
+
+        return score
+
+    def shot_duration(memory):
+        if memory.get("media_type") == "Video":
+            available = float(memory.get("duration_seconds") or 0)
+
+            if available > 0:
+                return max(3.0, min(5.5, available))
+
+            return 4.5
+
+        if int(memory.get("importance") or 0) == 5:
+            return 4.0
+
+        return 3.2
+
+    storyboard = []
+    used_ids = set()
+
+    for event in events:
+        candidates = []
+
+        for memory in memories:
+            if memory["id"] in used_ids:
+                continue
+
+            score = event_match_score(memory, event)
+
+            if score > 0:
+                candidates.append((score, memory))
+
+        candidates.sort(
+            key=lambda pair: pair[0],
+            reverse=True
+        )
+
+        selected = []
+        total_seconds = 0.0
+        seen_scene_keys = set()
+        media_counts = {"Photo": 0, "Video": 0}
+
+        for score, memory in candidates:
+            if len(selected) >= event["max_shots"]:
+                break
+
+            if total_seconds >= event["target_seconds"]:
+                break
+
+            scene_key = text(memory, "scene").lower()[:50]
+
+            if scene_key and scene_key in seen_scene_keys:
+                continue
+
+            # Avoid photo-only PPT feel when video exists.
+            if (
+                memory.get("media_type") == "Photo"
+                and media_counts["Photo"] >= 3
+                and any(
+                    candidate_memory.get("media_type") == "Video"
+                    for _, candidate_memory in candidates
+                )
+            ):
+                continue
+
+            duration = shot_duration(memory)
+
+            selected.append({
+                "memory": memory,
+                "score": score,
+                "duration": duration,
+            })
+
+            used_ids.add(memory["id"])
+
+            if scene_key:
+                seen_scene_keys.add(scene_key)
+
+            media_counts[memory.get("media_type")] += 1
+            total_seconds += duration
+
+        selected.sort(
+            key=lambda item: (
+                effective_date(item["memory"]),
+                item["memory"].get("content_created") or "",
+                item["memory"].get("filename") or "",
+            )
+        )
+
+        storyboard.append({
+            "name": event["name"],
+            "target_seconds": event["target_seconds"],
+            "shots": selected,
+            "actual_seconds": sum(
+                shot["duration"]
+                for shot in selected
+            ),
+        })
+
+    return storyboard
 def save_memory_dna(media_id: int, values: dict, ai_analyzed: int | None = None) -> None:
     conn = db()
     if ai_analyzed is None:
